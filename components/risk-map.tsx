@@ -24,6 +24,13 @@ export function RiskMap({ lat, lon, onLocationSelect }: RiskMapProps) {
   const initMap = useCallback(async () => {
     if (!containerRef.current || mapRef.current) return
 
+    // Guard against re-initialization on the same DOM element (React strict mode / fast refresh)
+    const container = containerRef.current as HTMLDivElement & { _leaflet_id?: number }
+    if (container._leaflet_id) {
+      delete container._leaflet_id
+      container.innerHTML = ""
+    }
+
     const leaflet = (await import("leaflet")).default
 
     // Fix default marker icon
