@@ -20,18 +20,26 @@ export function RiskMap({ lat, lon, onLocationSelect }: RiskMapProps) {
   const mapRef = useRef<L.Map | null>(null)
   const markerRef = useRef<L.Marker | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const initializingRef = useRef(false)
 
   const initMap = useCallback(async () => {
-    if (!containerRef.current || mapRef.current) return
+    if (!containerRef.current || mapRef.current || initializingRef.current) return
+    initializingRef.current = true
 
-    // Guard against re-initialization on the same DOM element (React strict mode / fast refresh)
+    const leaflet = (await import("leaflet")).default
+
+    // Bail out if cleanup ran while we were loading leaflet
+    if (!containerRef.current || mapRef.current) {
+      initializingRef.current = false
+      return
+    }
+
+    // Clear any stale Leaflet state on the DOM node (strict mode / fast refresh)
     const container = containerRef.current as HTMLDivElement & { _leaflet_id?: number }
     if (container._leaflet_id) {
       delete container._leaflet_id
       container.innerHTML = ""
     }
-
-    const leaflet = (await import("leaflet")).default
 
     // Fix default marker icon
     delete (leaflet.Icon.Default.prototype as Record<string, unknown>)._getIconUrl
@@ -168,6 +176,7 @@ export function RiskMap({ lat, lon, onLocationSelect }: RiskMapProps) {
   useEffect(() => {
     initMap()
     return () => {
+      initializingRef.current = false
       if (mapRef.current) {
         mapRef.current.remove()
         mapRef.current = null
